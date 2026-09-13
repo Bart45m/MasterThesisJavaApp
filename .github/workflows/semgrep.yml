@@ -37,7 +37,7 @@ jobs:
       - name: Run Semgrep Scan
         run: |
           semgrep scan \
-            --config "p/default" --config "p/java" \
+            --config "p/default" --config "p/java" --config "p/findsecbugs" \
             --sarif \
             --output semgrep-results.sarif \
             --metrics=off
