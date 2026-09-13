@@ -42,6 +42,7 @@ jobs:
             --output semgrep-results.sarif \
             --metrics=off
 
+      # 2. Rzutowanie wartości słownych na numeryczne (Pancerny Fix dla GitHub SARIF)
       - name: Convert Textual Severities to Numbers
         if: always()
         shell: python
@@ -54,7 +55,7 @@ jobs:
               with open(file_path, "r") as f:
                   data = json.load(f)
               
-              # Mapowanie wartości tekstowych na liczbowe wymagane przez GitHub
+              # Standaryzowany słownik mapowania (klucze zawsze z wielkiej litery)
               mapping = {
                   "Critical": "9.5",
                   "High": "8.0",
@@ -62,18 +63,27 @@ jobs:
                   "Low": "2.0"
               }
               
-              # Przeszukiwanie struktury JSON w poszukiwaniu pola security-severity
+              # 1. Głęboka korekta w definicjach reguł (rules)
               for run in data.get("runs", []):
                   for rule in run.get("tool", {}).get("driver", {}).get("rules", []):
                       properties = rule.get("properties", {})
                       if "security-severity" in properties:
-                          old_val = properties["security-severity"]
+                          old_val = str(properties["security-severity"]).strip().capitalize()
                           if old_val in mapping:
                               properties["security-severity"] = mapping[old_val]
               
+              # 2. Dodatkowa korekta bezpośrednio w wynikach (results) - na wypadek gdyby GitHub tam też szukał liczb
+              for run in data.get("runs", []):
+                  for result in run.get("results", []):
+                      properties = result.get("properties", {})
+                      if "security-severity" in properties:
+                          old_val = str(properties["security-severity"]).strip().capitalize()
+                          if old_val in mapping:
+                              properties["security-severity"] = mapping[old_val]
+
               with open(file_path, "w") as f:
                   json.dump(data, f, indent=2)
-              print("Pomyślnie zrzutowano wartości poziomu bezpieczeństwa na format numeryczny!")
+              print("Pomyślnie zrzutowano wszystkie (w tym ukryte) wartości tekstowe na liczby!")
 
       - name: Upload SARIF file to GitHub
         uses: github/codeql-action/upload-sarif@v4
