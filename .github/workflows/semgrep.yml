@@ -37,10 +37,43 @@ jobs:
       - name: Run Semgrep Scan
         run: |
           semgrep scan \
-            --config "p/findsecbugs" \
+            --config "p/default" --config "p/java" --config "p/findsecbugs" \
             --sarif \
             --output semgrep-results.sarif \
             --metrics=off
+
+      - name: Convert Textual Severities to Numbers
+        if: always()
+        shell: python
+        run: |
+          import json
+          import os
+
+          file_path = "semgrep-results.sarif"
+          if os.path.exists(file_path):
+              with open(file_path, "r") as f:
+                  data = json.load(f)
+              
+              # Mapowanie wartości tekstowych na liczbowe wymagane przez GitHub
+              mapping = {
+                  "Critical": "9.5",
+                  "High": "8.0",
+                  "Medium": "5.5",
+                  "Low": "2.0"
+              }
+              
+              # Przeszukiwanie struktury JSON w poszukiwaniu pola security-severity
+              for run in data.get("runs", []):
+                  for rule in run.get("tool", {}).get("driver", {}).get("rules", []):
+                      properties = rule.get("properties", {})
+                      if "security-severity" in properties:
+                          old_val = properties["security-severity"]
+                          if old_val in mapping:
+                              properties["security-severity"] = mapping[old_val]
+              
+              with open(file_path, "w") as f:
+                  json.dump(data, f, indent=2)
+              print("Pomyślnie zrzutowano wartości poziomu bezpieczeństwa na format numeryczny!")
 
       - name: Upload SARIF file to GitHub
         uses: github/codeql-action/upload-sarif@v4
