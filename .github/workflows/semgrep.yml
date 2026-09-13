@@ -42,8 +42,7 @@ jobs:
             --output semgrep-results.sarif \
             --metrics=off
 
-      # 2. Rzutowanie wartości słownych na numeryczne (Pancerny Fix dla GitHub SARIF)
-      # 2. Rzutowanie wartości oraz naprawa zbyt długich identyfikatorów (Fix dla limitu 255 znaków)
+            # 2. Rzutowanie wartości oraz naprawa zbyt długich identyfikatorów (Fix dla limitu 255 znaków oraz wartości Info)
       - name: Post-process SARIF File for GitHub Limits
         if: always()
         shell: python
@@ -56,11 +55,13 @@ jobs:
               with open(file_path, "r") as f:
                   data = json.load(f)
               
+              # Dodano "Info" z mapowaniem na "0.0"
               mapping = {
                   "Critical": "9.5",
                   "High": "8.0",
                   "Medium": "5.5",
-                  "Low": "2.0"
+                  "Low": "2.0",
+                  "Info": "0.0"
               }
               
               # Słownik do mapowania starych identyfikatorów na bezpieczne skrócone wersje
