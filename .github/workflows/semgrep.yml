@@ -43,7 +43,8 @@ jobs:
             --metrics=off
 
       # 2. Rzutowanie wartości słownych na numeryczne (Pancerny Fix dla GitHub SARIF)
-      - name: Convert Textual Severities to Numbers
+      # 2. Rzutowanie wartości oraz naprawa zbyt długich identyfikatorów (Fix dla limitu 255 znaków)
+      - name: Post-process SARIF File for GitHub Limits
         if: always()
         shell: python
         run: |
@@ -55,7 +56,6 @@ jobs:
               with open(file_path, "r") as f:
                   data = json.load(f)
               
-              # Standaryzowany słownik mapowania (klucze zawsze z wielkiej litery)
               mapping = {
                   "Critical": "9.5",
                   "High": "8.0",
@@ -63,18 +63,36 @@ jobs:
                   "Low": "2.0"
               }
               
-              # 1. Głęboka korekta w definicjach reguł (rules)
+              # Słownik do mapowania starych identyfikatorów na bezpieczne skrócone wersje
+              id_map = {}
+
               for run in data.get("runs", []):
+                  # 1. Przetwarzanie definicji reguł (rules)
                   for rule in run.get("tool", {}).get("driver", {}).get("rules", []):
+                      rule_id = rule.get("id", "")
+                      
+                      # Fix dla limitu 255 znaków
+                      if len(rule_id) > 255:
+                          new_id = rule_id[:240] + "...shortened"
+                          id_map[rule_id] = new_id
+                          rule["id"] = new_id
+                          rule_id = new_id
+                      
+                      # Fix dla security-severity
                       properties = rule.get("properties", {})
                       if "security-severity" in properties:
                           old_val = str(properties["security-severity"]).strip().capitalize()
                           if old_val in mapping:
                               properties["security-severity"] = mapping[old_val]
               
-              # 2. Dodatkowa korekta bezpośrednio w wynikach (results) - na wypadek gdyby GitHub tam też szukał liczb
-              for run in data.get("runs", []):
+                  # 2. Przetwarzanie konkretnych wyników (results) i synchronizacja ID
                   for result in run.get("results", []):
+                      # Podmiana ID reguły na skróconą wersję, jeśli była za długa
+                      old_rule_id = result.get("ruleId", "")
+                      if old_rule_id in id_map:
+                          result["ruleId"] = id_map[old_rule_id]
+                      
+                      # Dodatkowy fix dla security-severity w wynikach
                       properties = result.get("properties", {})
                       if "security-severity" in properties:
                           old_val = str(properties["security-severity"]).strip().capitalize()
@@ -83,7 +101,7 @@ jobs:
 
               with open(file_path, "w") as f:
                   json.dump(data, f, indent=2)
-              print("Pomyślnie zrzutowano wszystkie (w tym ukryte) wartości tekstowe na liczby!")
+              print("Pomyślnie dostosowano plik SARIF do wymagań GitHub Advanced Security!")
 
       - name: Upload SARIF file to GitHub
         uses: github/codeql-action/upload-sarif@v4
