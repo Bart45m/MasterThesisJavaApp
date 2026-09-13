@@ -77,6 +77,33 @@
                                     <mainClass>com.masterthesis.master_thesis_java_app.MasterThesisJavaAppApplication</mainClass>
                                 </configuration>
 			</plugin>
+                        <plugin>
+                            <groupId>com.github.spotbugs</groupId>
+                            <artifactId>spotbugs-maven-plugin</artifactId>
+                            <!-- Najnowsza stabilna wersja wspierająca nowoczesne wydania Java -->
+                            <version>4.10.4.1</version> 
+                            <configuration>
+                                <effort>Max</effort>
+                                <threshold>Low</threshold>
+                                <failOnError>false</failOnError> 
+                                <sarifOutput>true</sarifOutput>
+                                <plugins>
+                                    <plugin>
+                                        <groupId>com.h3xstream.findsecbugs</groupId>
+                                        <artifactId>findsecbugs-plugin</artifactId>
+                                        <!-- Najnowsza wersja silnika detekcji podatności -->
+                                        <version>1.14.0</version> 
+                                    </plugin>
+                                </plugins>
+                            </configuration>
+                            <executions>
+                                <execution>
+                                    <goals>
+                                        <goal>check</goal>
+                                    </goals>
+                                </execution>
+                            </executions>
+                        </plugin>
 		</plugins>
 	</build>
 
